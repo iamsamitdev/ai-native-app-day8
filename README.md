@@ -23,6 +23,8 @@
 | [OpenAI SDK](https://github.com/openai/openai-node) | ^6.33.0 | Embeddings + AI API |
 | [pdf-parse](https://github.com/modesty/pdf-parse) | ^2.4.5 | อ่านไฟล์ PDF |
 | [csv-parse](https://csv.js.org) | ^6.2.1 | อ่านไฟล์ CSV |
+| [react-markdown](https://github.com/remarkjs/react-markdown) | latest | Render Markdown ใน Chat (table, code, heading ฯลฯ) |
+| [remark-gfm](https://github.com/remarkjs/remark-gfm) | latest | GitHub Flavored Markdown (tables, strikethrough, autolink) |
 
 ---
 
@@ -102,6 +104,11 @@ GMAIL_APP_PASSWORD="your-app-password"
 OPENAI_API_KEY="your-openai-api-key"
 OPENAI_EMBEDDING_MODEL="text-embedding-3-small"
 OPENAI_CHAT_MODEL="gpt-4o-mini"
+
+# LINE Messaging API (สำหรับ LINE Bot + Webhook)
+LINE_CHANNEL_SECRET="your-line-channel-secret"
+LINE_CHANNEL_ACCESS_TOKEN="your-line-channel-access-token"
+LINE_GROUP_IDS="your-group-id-1,your-group-id-2"  # คั่นด้วย , ถ้ามีหลายกลุ่ม
 ```
 
 ### 4. รัน Development Server
@@ -192,6 +199,9 @@ ai-native-app/
 │   │   │   ├── page.tsx                ← Dashboard page
 │   │   │   ├── DashboardContent.tsx    ← Dashboard content component
 │   │   │   └── SignOutButton.tsx       ← Sign Out button component
+│   │   ├── chat/
+│   │   │   ├── page.tsx                ← Full Chat page (Metadata)
+│   │   │   └── ChatContent.tsx         ← Chat UI + Session Sidebar + Markdown + Streaming
 │   │   ├── admin/
 │   │   │   ├── users/
 │   │   │   │   ├── page.tsx            ← Admin: User Management page (Admin only)
@@ -210,7 +220,9 @@ ai-native-app/
 │   │   ├── search/route.ts             ← POST /api/search (Vector Search)
 │   │   ├── chat/
 │   │   │   ├── route.ts                ← POST /api/chat (RAG Chat + History)
-│   │   │   ├── sessions/route.ts       ← GET, POST /api/chat/sessions
+│   │   │   ├── sessions/
+│   │   │   │   ├── route.ts            ← GET, POST /api/chat/sessions
+│   │   │   │   └── [id]/route.ts       ← GET messages / PUT title / DELETE session
 │   │   │   └── stream/route.ts         ← POST /api/chat/stream (SSE Streaming)
 │   │   ├── knowledge/
 │   │   │   ├── route.ts                ← GET, POST /api/knowledge
@@ -218,6 +230,8 @@ ai-native-app/
 │   │   │   └── [id]/
 │   │   │       ├── route.ts            ← GET, PUT, DELETE /api/knowledge/:id
 │   │   │       └── index/route.ts      ← POST /api/knowledge/:id/index (Vectorize)
+│   │   ├── line/
+│   │   │   └── webhook/route.ts        ← POST /api/line/webhook (LINE Messaging API)
 │   │   └── users/
 │   │       ├── route.ts                ← GET, POST /api/users
 │   │       └── [id]/route.ts           ← GET, DELETE /api/users/:id
@@ -253,6 +267,8 @@ ai-native-app/
 │   ├── rag-service.ts                  ← RAG pipeline: search + build context + call OpenAI
 │   ├── context-builder.ts              ← สร้าง context string จาก search results (token limit)
 │   ├── ingestion.ts                    ← Ingestion helper สำหรับ Knowledge Base API
+│   ├── chat-client.ts                  ← Streaming SSE client (ส่ง sessionId → /api/chat/stream)
+│   ├── line-push.ts                    ← Push Message ไปยัง LINE Groups (ดึง Group ID จาก DB)
 │   ├── theme-store.ts                  ← Shared dark mode store (useSyncExternalStore)
 │   └── utils.ts                        ← cn() utility
 │
@@ -479,6 +495,8 @@ curl -N -X POST http://localhost:3000/api/chat/stream \
 | `chat_session` | Session การสนทนา (เชื่อมกับ user) |
 | `chat_message` | ข้อความใน session (role: user/assistant + sources) |
 | `knowledge_document` | เอกสารฐานความรู้ที่จัดการผ่าน UI (title, content, fileType, isIndexed) |
+| `lead` | ข้อมูล Lead ที่เก็บจาก Chat (name, email, phone, message) |
+| `line_group` | LINE Group ที่ Bot ถูกเชิญเข้า (auto-register, active flag) |
 
 ---
 
@@ -491,8 +509,9 @@ curl -N -X POST http://localhost:3000/api/chat/stream \
 | OpenAI Platform | https://platform.openai.com | Embeddings API + Billing |
 | GitHub Settings | https://github.com/settings/developers | GitHub OAuth |
 | Google Cloud Console | https://console.cloud.google.com | Google OAuth |
-| LINE Developers | https://developers.line.biz | LINE Login |
+| LINE Developers | https://developers.line.biz | LINE Login + Messaging API (Bot + Webhook) |
 | Meta for Developers | https://developers.facebook.com | Facebook Login |
+| ngrok | https://ngrok.com | Tunnel localhost สำหรับทดสอบ LINE Webhook |
 
 ---
 
